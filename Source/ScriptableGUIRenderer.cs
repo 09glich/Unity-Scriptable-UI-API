@@ -7,6 +7,8 @@ using UnityEngine.Rendering;
 namespace ImmediateShapes {
     public class ScriptableGUIRenderer
     {
+
+        private static bool Running = false;
         public enum UIMeshMode { 
             Opaque,
             Transparent,
@@ -33,14 +35,21 @@ namespace ImmediateShapes {
             }
 
             public UIMaterialGroup() {
-                Materials.Add(UIMeshMode.Opaque, new Material(Shader.Find("IMGUIMainFrame/URPUnlitOpaque")));
-                Materials.Add(UIMeshMode.Opaque, new Material(Shader.Find("IMGUIMainFrame/URPUnlitTransparent")));
+                Materials = new Dictionary<UIMeshMode, Material>();
+
+                Shader Opaque = Shader.Find("IMGUIMainFrame/URPUnlitOpaque");
+                Shader Transparent = Shader.Find("IMGUIMainFrame/URPUnlitTransparent");
+
+                Debug.Log(Opaque);
+                Debug.Log(Transparent);
+
+                Materials.Add(UIMeshMode.Opaque, new Material(Opaque));
+                Materials.Add(UIMeshMode.Transparent, new Material(Transparent));
 
             }
         }
 
         private class UIMeshElement {
-            public UIMeshMode UIRenderMode;
             public Mesh CurrentMesh;
 
             public List<Vector3> Verticies;
@@ -50,7 +59,7 @@ namespace ImmediateShapes {
 
             public bool Modifyed = false;
 
-            public UIMeshElement(Material UIMaterial) {
+            public UIMeshElement() {
                 CurrentMesh = new Mesh();
                 CurrentMesh.MarkDynamic();
 
@@ -60,7 +69,7 @@ namespace ImmediateShapes {
                 Colors = new List<Color>();
             }
 
-            public void RenderToScreen(CommandBuffer cmdbuffer, Material Mat) {
+            public void RenderToScreen(RasterCommandBuffer cmdbuffer, Material Mat) {
                 CurrentMesh.Clear();
                 CurrentMesh.SetVertices(Verticies);
                 CurrentMesh.SetUVs(0, UVs);
@@ -69,6 +78,8 @@ namespace ImmediateShapes {
                 CurrentMesh.RecalculateNormals();
 
                 CurrentMesh.bounds = new Bounds(Vector3.zero, Vector3.one * 500000f);
+
+                Debug.Log("Rendering Mesh");
 
                 Mat.SetInt("_ScreenWidth", Screen.width);
                 Mat.SetInt("_ScreenHeight", Screen.height);
@@ -161,34 +172,47 @@ namespace ImmediateShapes {
 
 
         // Register a full screen GUI renderer to be rendered every frame
-        public static void RegisterScriptableGUI(UIMaterialGroup MatGroup, ScriptableGUI GUIRenderer) {
+        public static void RegisterScriptableGUI(UIMaterialGroup MatGroup, ScriptableGUI GUIRenderer, string RendererName) {
             ScriptableUIRegistry ScriptableGUIElement = new ScriptableUIRegistry();
             ScriptableGUIElement.MaterialGroup = MatGroup;
             ScriptableGUIElement.GUIElement = GUIRenderer;
+
+            ScriptableGUIElements.Add(RendererName, ScriptableGUIElement);
+        }
+
+        static int UnnamedGUIs = 0;
+        public static void RegisterScriptableGUI(UIMaterialGroup MatGroup, ScriptableGUI GUIRenderer) {
+            RegisterScriptableGUI(MatGroup, GUIRenderer, $"Unnamed {UnnamedGUIs}");
+            UnnamedGUIs++;
         }
 
         //Initialize everything such as Render meshes and Materials
-        public static void init(UIMaterialGroup materialGroup)
+        public static void init()
         {
+            Running = true;
+            if (ScriptableGUIElements != null) { return; }
+
+            ScriptableGUIElements = new Dictionary<string, ScriptableUIRegistry>();
             UIMeshes = new Dictionary<UIMeshMode, UIMeshElement>();
 
-            UIMeshes.Add(UIMeshMode.Opaque, new UIMeshElement(materialGroup.OpaqueMaterial));
-            UIMeshes.Add(UIMeshMode.Transparent, new UIMeshElement(materialGroup.TransparentMaterial));
+            UIMeshes.Add(UIMeshMode.Opaque, new UIMeshElement());
+            UIMeshes.Add(UIMeshMode.Transparent, new UIMeshElement());
 
             ScriptableScreenGUIs = new List<ScriptableGUI>();
             ScriptableWorldGUIs = new List<ScriptableGUI>();
         }
 
         //Called by the imidiate GUI render Feature so it renders above post prosessing
-        public static void RenderToScreen(CommandBuffer CMDBuffer)
+        public static void RenderToScreen(RasterCommandBuffer CMDBuffer)
         {
+            if (!Running) { return; }
             foreach (KeyValuePair<string, ScriptableUIRegistry> item in ScriptableGUIElements)
             {
                 item.Value.GUIElement.Render();
 
                 foreach (KeyValuePair<UIMeshMode, UIMeshElement> UIMesh in UIMeshes)
                 {
-                    UIMesh.Value.RenderToScreen(CMDBuffer, );
+                    UIMesh.Value.RenderToScreen(CMDBuffer, item.Value.MaterialGroup.GetMaterialFromMode(UIMesh.Key));
                 }
             }
 

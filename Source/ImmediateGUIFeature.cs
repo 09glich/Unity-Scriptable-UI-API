@@ -1,29 +1,54 @@
 using ImmediateShapes;
+using System.Runtime.CompilerServices;
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.Rendering.RenderGraphModule;
 using UnityEngine.Rendering.Universal;
+
 
 public class ImmediateGUIFeature : ScriptableRendererFeature
 {
+    private class PassData { 
+    }
+
     class ImmediateGUIPass : ScriptableRenderPass
     {
-        public override void Execute(
-            ScriptableRenderContext context,
-            ref RenderingData renderingData)
+        public override void RecordRenderGraph(RenderGraph renderGraph, ContextContainer frameData)
         {
-            CommandBuffer cmd = CommandBufferPool.Get("Immediate GUI");
+            using (
+                var builder =
+                renderGraph.AddRasterRenderPass<PassData>(
+                    "Immediate GUI", out var passData)
+                ) {
 
-            ScriptableGUIRenderer.RenderToScreen(cmd);
+                var Resources = frameData.Get<UniversalResourceData>();
 
-            context.ExecuteCommandBuffer(cmd);
-            CommandBufferPool.Release(cmd);
+
+                builder.SetRenderAttachment(Resources.activeColorTexture,0);
+
+
+                builder.SetRenderFunc(
+                (PassData data, RasterGraphContext context) =>
+                {
+                    ScriptableGUIRenderer.RenderToScreen(context.cmd);
+                });
+            }
+            
+
+           
+
+
+           
         }
+
+
     }
 
     ImmediateGUIPass pass;
 
     public override void Create()
     {
+        Debug.Log("Creating render feature");
         pass = new ImmediateGUIPass();
 
         pass.renderPassEvent = RenderPassEvent.AfterRenderingPostProcessing;
@@ -33,6 +58,9 @@ public class ImmediateGUIFeature : ScriptableRendererFeature
         ScriptableRenderer renderer,
         ref RenderingData renderingData)
     {
+        if (!Application.isPlaying)
+            return;
+
         renderer.EnqueuePass(pass);
     }
 }

@@ -11,7 +11,9 @@ namespace ImmediateShapes {
             ScriptableGUIRenderer.UIMaterialGroup MatGroup = new ScriptableGUIRenderer.UIMaterialGroup();
             
 
-            ScriptableGUIRenderer.init(MatGroup);
+            ScriptableGUIRenderer.init();
+            Debug.Log("Registering");
+            ScriptableGUIRenderer.RegisterScriptableGUI(MatGroup, GUI);
 
         }
     }
