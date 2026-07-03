@@ -23,9 +23,22 @@ public class ImmediateGUIFeature : ScriptableRendererFeature
 
                 var Resources = frameData.Get<UniversalResourceData>();
 
-
                 builder.SetRenderAttachment(Resources.activeColorTexture,0);
 
+                TextureDesc UIDepthDescription = new TextureDesc(
+                    Screen.width,
+                    Screen.height
+                );
+
+
+                UIDepthDescription.depthBufferBits = DepthBits.Depth32;
+                UIDepthDescription.clearBuffer = true;
+                UIDepthDescription.clearColor = Color.black;
+                UIDepthDescription.name = "ImediateModeGUI";
+
+                TextureHandle handle = renderGraph.CreateTexture(UIDepthDescription);
+
+                builder.SetRenderAttachmentDepth(handle, AccessFlags.Write);
 
                 builder.SetRenderFunc(
                 (PassData data, RasterGraphContext context) =>
@@ -48,7 +61,7 @@ public class ImmediateGUIFeature : ScriptableRendererFeature
 
     public override void Create()
     {
-        Debug.Log("Creating render feature");
+        
         pass = new ImmediateGUIPass();
 
         pass.renderPassEvent = RenderPassEvent.AfterRenderingPostProcessing;

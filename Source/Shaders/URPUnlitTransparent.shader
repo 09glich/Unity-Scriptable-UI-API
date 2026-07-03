@@ -19,7 +19,7 @@ Shader "IMGUIMainFrame/URPUnlitTransparent"
             Blend SrcAlpha OneMinusSrcAlpha
             Cull Off
             ZWrite Off
-            ZTest Always
+            ZTest LEqual
 
             HLSLPROGRAM
 
@@ -57,7 +57,7 @@ Shader "IMGUIMainFrame/URPUnlitTransparent"
                 clip.x = (IN.positionOS.x / _ScreenWidth) * 2.0 - 1.0;
                 clip.y = (IN.positionOS.y / _ScreenHeight) * 2.0 - 1.0;
                 
-                OUT.positionHCS = float4(clip, 0, 1);
+                OUT.positionHCS = float4(clip, IN.positionOS.z, 1);
                 OUT.uv = IN.uv;
                 OUT.VertColor = IN.color;
                 return OUT;
