@@ -1,4 +1,4 @@
-Shader "IMGUIMainFrame/URPUnlitTransparent"
+Shader "IMGUIMainFrame/URPUnlitCircleSDFOpaque"
 {
     Properties
     {
@@ -14,12 +14,11 @@ Shader "IMGUIMainFrame/URPUnlitTransparent"
         Pass
         {
             
-            Tags {"RenderType"="Transparent" }
+            Tags {"RenderType"="Opaque" }
 
-            Blend SrcAlpha OneMinusSrcAlpha
             Cull Off
-            ZWrite Off
-            ZTest LEqual
+            ZWrite On
+            
 
             HLSLPROGRAM
 
@@ -68,6 +67,14 @@ Shader "IMGUIMainFrame/URPUnlitTransparent"
             half4 frag(Varyings IN) : SV_Target
             {
                 half4 color = IN.VertColor;
+
+                if(
+                    length(float2(0.5,0.5) - IN.uv) > 0.5
+                ) {
+                    
+                    discard;
+                }
+
                 return color;
             }
             ENDHLSL

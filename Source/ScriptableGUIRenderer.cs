@@ -8,7 +8,6 @@ namespace ImmediateShapes {
     public class ScriptableGUIRenderer
     {
 
-        private static bool Running = false;
         public enum UIMeshMode { 
             Opaque,
             Transparent,
@@ -39,12 +38,15 @@ namespace ImmediateShapes {
 
                 Shader Opaque = Shader.Find("IMGUIMainFrame/URPUnlitOpaque");
                 Shader Transparent = Shader.Find("IMGUIMainFrame/URPUnlitTransparent");
+                Shader OpaqueCircle = Shader.Find("IMGUIMainFrame/URPUnlitCircleSDFOpaque");
+                Shader TransparentCircle = Shader.Find("IMGUIMainFrame/URPUnlitCircleSDFTransparent");
 
-                Debug.Log(Opaque);
-                Debug.Log(Transparent);
+                Debug.Log(TransparentCircle);
 
                 Materials.Add(UIMeshMode.Opaque, new Material(Opaque));
                 Materials.Add(UIMeshMode.Transparent, new Material(Transparent));
+                Materials.Add(UIMeshMode.Circle, new Material(OpaqueCircle));
+                Materials.Add(UIMeshMode.CircleTransparent, new Material(TransparentCircle));
 
             }
         }
@@ -79,7 +81,7 @@ namespace ImmediateShapes {
 
                 CurrentMesh.bounds = new Bounds(Vector3.zero, Vector3.one * 500000f);
 
-                Debug.Log("Rendering Mesh");
+                
 
                 Mat.SetInt("_ScreenWidth", Screen.width);
                 Mat.SetInt("_ScreenHeight", Screen.height);
@@ -99,6 +101,7 @@ namespace ImmediateShapes {
         }
 
         static int ZIndex = 0;
+        static float ZIndexDamp = .001f;
         private static void AddQuad(UIMeshElement UIMesh,Vector2Int Position, Vector2Int Size, Color VertexColor)
         {
             UIMesh.Modifyed = true;
@@ -106,10 +109,10 @@ namespace ImmediateShapes {
             Vector2 TruePos = new Vector2(Position.x, Position.y);
 
 
-            Vector3 Position1 = new Vector3(TruePos.x, TruePos.y, ZIndex);
-            Vector3 Position2 = new Vector3(TruePos.x + Size.x, TruePos.y, ZIndex);
-            Vector3 Position3 = new Vector3(TruePos.x, TruePos.y + Size.y, ZIndex);
-            Vector3 Position4 = new Vector3(TruePos.x + Size.x, TruePos.y + Size.y, ZIndex);
+            Vector3 Position1 = new Vector3(TruePos.x, TruePos.y, ZIndex * ZIndexDamp);
+            Vector3 Position2 = new Vector3(TruePos.x + Size.x, TruePos.y, ZIndex * ZIndexDamp);
+            Vector3 Position3 = new Vector3(TruePos.x, TruePos.y + Size.y, ZIndex * ZIndexDamp);
+            Vector3 Position4 = new Vector3(TruePos.x + Size.x, TruePos.y + Size.y, ZIndex * ZIndexDamp);
 
             int QuadOffset = UIMesh.Verticies.Count;
 
@@ -167,6 +170,79 @@ namespace ImmediateShapes {
         }
         public static void DrawRect(Vector2 Position, Vector2 Size) { DrawRect((int)Position.x, (int)Position.y, (int)Size.x, (int)Size.y); }
 
+        //Render Tri
+
+        public static void DrawTriangle(Vector2 Vert1, Vector2 Vert2, Vector2 Vert3) {
+            UIMeshElement element = UIMeshes[UIMeshMode.Opaque];
+
+            if (CurrentColor.a < 1) {
+                element = UIMeshes[UIMeshMode.Transparent];
+            }
+            int VertexCount = element.Verticies.Count;
+
+            element.Verticies.Add(new Vector3(Vert1.x, Vert1.y, ZIndex * ZIndexDamp));
+            element.Verticies.Add(new Vector3(Vert2.x, Vert2.y, ZIndex * ZIndexDamp));
+            element.Verticies.Add(new Vector3(Vert3.x, Vert3.y, ZIndex * ZIndexDamp));
+
+            element.Indicys.Add(VertexCount + 0);
+            element.Indicys.Add(VertexCount + 1);
+            element.Indicys.Add(VertexCount + 2);
+
+            element.Colors.Add(CurrentColor);
+            element.Colors.Add(CurrentColor);
+            element.Colors.Add(CurrentColor);
+
+            element.UVs.Add(new Vector2(0, 0));
+            element.UVs.Add(new Vector2(1, 0));
+            element.UVs.Add(new Vector2(0, 1));
+
+            element.Modifyed = true;
+
+
+            ZIndex++;
+        }
+
+        //Has not been implimented yet
+        public static void DrawPolyCircle(Vector2 Position, float Radius, int resolution) {
+            UIMeshElement element = UIMeshes[UIMeshMode.Opaque];
+
+            if (CurrentColor.a < 1)
+            {
+                element = UIMeshes[UIMeshMode.Transparent];
+            }
+            int VertexCount = element.Verticies.Count;
+
+            element.Verticies.Add(new Vector3(Position.x, Position.y, ZIndex * ZIndexDamp));
+            element.Colors.Add(CurrentColor);
+            element.UVs.Add(Vector2.one * 0.5f);
+
+
+            for (int Point = 0; Point <= resolution; Point++) { 
+               
+            }
+
+
+            ZIndex++;
+        }
+
+        //Draw SDF Circle
+        public static void DrawCircle(Vector2 Position, int Radius) {
+            UIMeshElement element = UIMeshes[UIMeshMode.Circle];
+
+            if (CurrentColor.a < 1)
+            {
+                element = UIMeshes[UIMeshMode.CircleTransparent];
+            }
+
+            AddQuad(
+                element, 
+                Vector2Int.FloorToInt(Position) - (Vector2Int.one * (Radius / 2)), 
+                Vector2Int.one * Radius, CurrentColor
+            );
+
+            ZIndex++;
+        }
+
         static List<ScriptableGUI> ScriptableScreenGUIs;
         static List<ScriptableGUI> ScriptableWorldGUIs;
 
@@ -189,7 +265,6 @@ namespace ImmediateShapes {
         //Initialize everything such as Render meshes and Materials
         public static void init()
         {
-            Running = true;
             if (ScriptableGUIElements != null) { return; }
 
             ScriptableGUIElements = new Dictionary<string, ScriptableUIRegistry>();
@@ -197,6 +272,8 @@ namespace ImmediateShapes {
 
             UIMeshes.Add(UIMeshMode.Opaque, new UIMeshElement());
             UIMeshes.Add(UIMeshMode.Transparent, new UIMeshElement());
+            UIMeshes.Add(UIMeshMode.Circle, new UIMeshElement());
+            UIMeshes.Add(UIMeshMode.CircleTransparent, new UIMeshElement());
 
             ScriptableScreenGUIs = new List<ScriptableGUI>();
             ScriptableWorldGUIs = new List<ScriptableGUI>();
@@ -205,7 +282,7 @@ namespace ImmediateShapes {
         //Called by the imidiate GUI render Feature so it renders above post prosessing
         public static void RenderToScreen(RasterCommandBuffer CMDBuffer)
         {
-            if (!Running) { return; }
+            
             foreach (KeyValuePair<string, ScriptableUIRegistry> item in ScriptableGUIElements)
             {
                 item.Value.GUIElement.Render();
