@@ -38,12 +38,15 @@ namespace ImmediateShapes {
 
                 Shader Opaque = Shader.Find("IMGUIMainFrame/URPUnlitOpaque");
                 Shader Transparent = Shader.Find("IMGUIMainFrame/URPUnlitTransparent");
+                Shader OpaqueCircle = Shader.Find("IMGUIMainFrame/URPUnlitCircleSDFOpaque");
+                Shader TransparentCircle = Shader.Find("IMGUIMainFrame/URPUnlitCircleSDFTransparent");
 
-                Debug.Log(Opaque);
-                Debug.Log(Transparent);
+                Debug.Log(TransparentCircle);
 
                 Materials.Add(UIMeshMode.Opaque, new Material(Opaque));
                 Materials.Add(UIMeshMode.Transparent, new Material(Transparent));
+                Materials.Add(UIMeshMode.Circle, new Material(OpaqueCircle));
+                Materials.Add(UIMeshMode.CircleTransparent, new Material(TransparentCircle));
 
             }
         }
@@ -215,9 +218,27 @@ namespace ImmediateShapes {
 
 
             for (int Point = 0; Point <= resolution; Point++) { 
-                
+               
             }
 
+
+            ZIndex++;
+        }
+
+        //Draw SDF Circle
+        public static void DrawCircle(Vector2 Position, int Radius) {
+            UIMeshElement element = UIMeshes[UIMeshMode.Circle];
+
+            if (CurrentColor.a < 1)
+            {
+                element = UIMeshes[UIMeshMode.CircleTransparent];
+            }
+
+            AddQuad(
+                element, 
+                Vector2Int.FloorToInt(Position) - (Vector2Int.one * (Radius / 2)), 
+                Vector2Int.one * Radius, CurrentColor
+            );
 
             ZIndex++;
         }
@@ -251,6 +272,8 @@ namespace ImmediateShapes {
 
             UIMeshes.Add(UIMeshMode.Opaque, new UIMeshElement());
             UIMeshes.Add(UIMeshMode.Transparent, new UIMeshElement());
+            UIMeshes.Add(UIMeshMode.Circle, new UIMeshElement());
+            UIMeshes.Add(UIMeshMode.CircleTransparent, new UIMeshElement());
 
             ScriptableScreenGUIs = new List<ScriptableGUI>();
             ScriptableWorldGUIs = new List<ScriptableGUI>();

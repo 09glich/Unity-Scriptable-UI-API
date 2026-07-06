@@ -36,6 +36,12 @@ namespace ImmediateShapes
                 new Vector2(500, 500)
             );
 
+            Color CircleColor = Color.purple;
+            CircleColor.a = MathF.Sin(Time.time);
+
+            ScriptableGUIRenderer.ChangeColor(CircleColor);
+            ScriptableGUIRenderer.DrawCircle(Vector2.one * 500, (int)(Mathf.Sin(Time.time*MathF.PI)*100));
+
 
 
 
