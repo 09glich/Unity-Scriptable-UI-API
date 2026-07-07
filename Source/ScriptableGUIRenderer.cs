@@ -100,8 +100,36 @@ namespace ImmediateShapes {
             }
         }
 
+        static Stack<Matrix4x4> TransformHistory = new();
+        static Matrix4x4 TransformMatrix = Matrix4x4.identity;
+
+        //Matrix Transformations
+        public static void SetMatrix(Matrix4x4 NewMatrix)
+        {
+            TransformMatrix = NewMatrix;
+        }
+        public static void PushMatrix() { TransformHistory.Push(TransformMatrix); }
+        public static void PopMatrix() { TransformMatrix = TransformHistory.Pop(); }
+        public static void ResetMatrix() { TransformMatrix = Matrix4x4.identity; }
+
+        // Rotation
+        public static void RotateRaw(float Direction) { TransformMatrix *= Matrix4x4.Rotate(Quaternion.Euler(new Vector3(0, 0, Direction))); }
+        public static void RotateRaw(Quaternion DirectQuaternion) { TransformMatrix *= Matrix4x4.Rotate(DirectQuaternion); }
+
+        //Position
+        public static void Translate(Vector2 Position) { TransformMatrix *= Matrix4x4.Translate(new Vector3(Position.x, Position.y,0)); }
+        public static void Translate(int X, int Y) { Translate(new Vector2(X, Y)); }
+
+        //Scale
+
+        public static void Scale(Vector2 Scale) { TransformMatrix *= Matrix4x4.Scale(new Vector3(Scale.x, Scale.y, 1)); }
+        public static void Scale(int X, int Y) { Scale(new Vector2(X, Y)); }
+
+
+
         static int ZIndex = 0;
         static float ZIndexDamp = .001f;
+        
         private static void AddQuad(UIMeshElement UIMesh,Vector2Int Position, Vector2Int Size, Color VertexColor)
         {
             UIMesh.Modifyed = true;
@@ -109,10 +137,10 @@ namespace ImmediateShapes {
             Vector2 TruePos = new Vector2(Position.x, Position.y);
 
 
-            Vector3 Position1 = new Vector3(TruePos.x, TruePos.y, ZIndex * ZIndexDamp);
-            Vector3 Position2 = new Vector3(TruePos.x + Size.x, TruePos.y, ZIndex * ZIndexDamp);
-            Vector3 Position3 = new Vector3(TruePos.x, TruePos.y + Size.y, ZIndex * ZIndexDamp);
-            Vector3 Position4 = new Vector3(TruePos.x + Size.x, TruePos.y + Size.y, ZIndex * ZIndexDamp);
+            Vector3 Position1 = TransformMatrix.MultiplyPoint3x4(new Vector3(TruePos.x, TruePos.y, ZIndex * ZIndexDamp));
+            Vector3 Position2 = TransformMatrix.MultiplyPoint3x4(new Vector3(TruePos.x + Size.x, TruePos.y, ZIndex * ZIndexDamp));
+            Vector3 Position3 = TransformMatrix.MultiplyPoint3x4(new Vector3(TruePos.x, TruePos.y + Size.y, ZIndex * ZIndexDamp));
+            Vector3 Position4 = TransformMatrix.MultiplyPoint3x4(new Vector3(TruePos.x + Size.x, TruePos.y + Size.y, ZIndex * ZIndexDamp));
 
             int QuadOffset = UIMesh.Verticies.Count;
 
@@ -180,9 +208,9 @@ namespace ImmediateShapes {
             }
             int VertexCount = element.Verticies.Count;
 
-            element.Verticies.Add(new Vector3(Vert1.x, Vert1.y, ZIndex * ZIndexDamp));
-            element.Verticies.Add(new Vector3(Vert2.x, Vert2.y, ZIndex * ZIndexDamp));
-            element.Verticies.Add(new Vector3(Vert3.x, Vert3.y, ZIndex * ZIndexDamp));
+            element.Verticies.Add(TransformMatrix.MultiplyPoint3x4(new Vector3(Vert1.x, Vert1.y, ZIndex * ZIndexDamp)));
+            element.Verticies.Add(TransformMatrix.MultiplyPoint3x4(new Vector3(Vert2.x, Vert2.y, ZIndex * ZIndexDamp)));
+            element.Verticies.Add(TransformMatrix.MultiplyPoint3x4(new Vector3(Vert3.x, Vert3.y, ZIndex * ZIndexDamp)));
 
             element.Indicys.Add(VertexCount + 0);
             element.Indicys.Add(VertexCount + 1);
@@ -243,9 +271,23 @@ namespace ImmediateShapes {
             ZIndex++;
         }
 
+        public static void DrawLine(Vector2 Point1, Vector2 Point2, float Width) 
+        {
+            Vector2 LookDirection = (Point1 - Point2).normalized;
+            Vector2 LookUPVec = new Vector2(-LookDirection.y, LookDirection.x);
+
+            Vector2 Vert1 = Point1 + LookUPVec * (Width * .5f)  ;
+            Vector2 Vert2 = Point1 - LookUPVec * (Width * .5f)  ;
+            Vector2 Vert3 = Point2 + LookUPVec * (Width * .5f)  ;
+            Vector2 Vert4 = Point2 - LookUPVec * (Width * .5f)  ;
+
+            DrawTriangle(Vert1, Vert2, Vert3);
+            DrawTriangle(Vert2, Vert4, Vert3);
+
+        }
+
         static List<ScriptableGUI> ScriptableScreenGUIs;
         static List<ScriptableGUI> ScriptableWorldGUIs;
-
 
         // Register a full screen GUI renderer to be rendered every frame
         public static void RegisterScriptableGUI(UIMaterialGroup MatGroup, ScriptableGUI GUIRenderer, string RendererName) {
